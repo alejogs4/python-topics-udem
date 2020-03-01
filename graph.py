@@ -7,6 +7,7 @@ from queue import Queue, PriorityQueue
 from functools import reduce
 import graphutils
 
+
 class Arc:
     def __init__(self, weigth, initial_node, final_node):
         assert weigth > 0, "Weigth must be greather than 0"
@@ -16,8 +17,21 @@ class Arc:
 
 
 class Node:
-    def __init__(self, value):
+    def __init__(self, value, heuristic=0):
         self.value = value
+        self.heuristic = heuristic
+
+    def __gt__(self, other):
+        if isinstance(other, tuple):
+            return self.value > other[1].value
+        return self.value > other.value
+
+    def __eq__(self, other):
+        if isinstance(other, bool):
+            return self.value == other
+        if isinstance(other, tuple):
+            return self.value == other[1].value
+        return self.value == other.value
 
 
 class Graph:
@@ -90,8 +104,36 @@ class Graph:
         # print(previous)
         return {'distance': distance, 'previous': previous}
 
+    def a_star(self, initial_node, final):
+        previous = graphutils.init_visited_nodes(self.nodes.keys())
+
+        priority_queue = PriorityQueue()
+        priority_queue.put((initial_node, initial_node.heuristic))
+
+        graph_score = graphutils.init_map_to_infinity(self.nodes.keys())
+        graph_score[initial_node.value] = 0
+
+        f_score = graphutils.init_map_to_infinity(self.nodes.keys())
+        f_score[initial_node.value] = initial_node.heuristic
+
+        while not priority_queue.empty():
+            current_node = priority_queue.get()
+            if current_node[0].value == final.value:
+                break
+            for neighboor in self.neighboors(current_node[0]):
+                probable_graph_score = graph_score[current_node[0].value] + neighboor[1]
+
+                if probable_graph_score < graph_score[neighboor[0].value]:
+                    previous[neighboor[0].value] = current_node
+                    graph_score[neighboor[0].value] = probable_graph_score
+                    f_score[neighboor[0].value] = graph_score[neighboor[0].value] + neighboor[0].heuristic
+
+                    if not any((neighboor[0].heuristic, neighboor[0]) in element for element in priority_queue.queue):
+                        priority_queue.put((neighboor[0], f_score[neighboor[0].value]))
+        return {'distance': f_score, 'previous': previous}
+
     def find_path(self, initial_node, final_node):
-        dijkstra = self.dijkstra(initial_node)
+        dijkstra = self.a_star(initial_node, final_node)
         path = []
 
         if (dijkstra.get('previous')[final_node.value] == False):
@@ -106,8 +148,10 @@ class Graph:
                 path.append(current)
                 queue.put(dijkstra.get('previous')[current[0].value])
         # Put last node
-        current_distance = reduce(lambda acumulated, current, : acumulated + current[1], path, 0)
-        path.insert(0, (final_node, abs(dijkstra.get('distance')[final_node.value] - current_distance)))
+        current_distance = reduce(
+            lambda acumulated, current, : acumulated + current[1], path, 0)
+        path.insert(0, (final_node, abs(dijkstra.get('distance')
+                                        [final_node.value] - current_distance)))
 
         return {
             'path': list(reversed(path)),
