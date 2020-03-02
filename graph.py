@@ -131,6 +131,26 @@ class Graph:
                     if not any((neighboor[0].heuristic, neighboor[0]) in element for element in priority_queue.queue):
                         priority_queue.put((neighboor[0], f_score[neighboor[0].value]))
         return {'distance': f_score, 'previous': previous}
+    '''
+    Find out if it's posible to reach to target node since initial node in a given maximun depth
+    '''
+    def iterative_search(self, initial_node, target_node, depth):
+        def limited_search(root, final_node, limit):
+            if root.value == final_node.value:
+                return True
+
+            if limit <= 0:
+                return False
+
+            for neighboor in self.neighboors(root):
+                if limited_search(neighboor[0], final_node, limit - 1) == True:
+                    return True
+            return False
+
+        for i in range(depth):
+            if limited_search(initial_node, target_node, i) == True:
+                return True
+        return False
 
     def find_path(self, initial_node, final_node):
         dijkstra = self.a_star(initial_node, final_node)
